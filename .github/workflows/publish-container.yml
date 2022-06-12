@@ -1,0 +1,75 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Build and Publish NeoAgi.Tools.FlatFileQuery Container
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push of a new tag
+  push:
+    tags: [ 'v*' ] 
+    
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+
+jobs:
+  build_image:
+    runs-on: ubuntu-latest
+
+    env:
+      KEY_ID: ${{ secrets.NEOAGI_CODE_ARTIFACT_CI_KEY_ID }}
+      ACCESS_KEY: ${{ secrets.NEOAGI_CODE_ARTIFACT_CI_ACCESS_KEY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Notify
+        uses: neoagi/actions-slack-notify@v2
+        with:
+            action-message: "${{ github.ref_name }} with SHA of ${{ github.sha }} Starting Build"
+            action-status: "Starting Build..."
+
+      - name: Init Workflow Variables
+        run: |
+            echo "TAG_NAME=$(echo ${{ github.ref_name }} | sed s/v// )" >> $GITHUB_ENV
+            echo "SHORT_HASH=$(echo ${{ github.sha }} | cut -c 1-8 )" >> $GITHUB_ENV
+
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.NEOAGI_CODE_ARTIFACT_CI_PUSH_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.NEOAGI_CODE_ARTIFACT_CI_PUSH_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build the Image
+        run: | 
+          cd src
+          sed -i s/##BUILD_HASH##/${{ github.sha }}/g Dockerfile
+          docker build --build-arg KEY_ID=${KEY_ID} --build-arg ACCESS_KEY=${ACCESS_KEY} -t {ProjectNamespaceLower}:latest . -f Dockerfile
+        shell: bash
+      
+      - name: Tag the Image
+        run: |
+          docker tag {ProjectNamespaceLower}:latest ${{ secrets.NEOAGI_PRIVATE_DOCKER_REGISTRY }}/{ProjectNamespaceLower}:${{ env.TAG_NAME }}
+          docker tag {ProjectNamespaceLower}:latest ${{ secrets.NEOAGI_PRIVATE_DOCKER_REGISTRY }}/{ProjectNamespaceLower}:${{ env.SHORT_HASH }}
+          docker tag {ProjectNamespaceLower}:latest ${{ secrets.NEOAGI_PRIVATE_DOCKER_REGISTRY }}/{ProjectNamespaceLower}:latest
+        shell: bash
+
+      - name: Push the Image
+        run: |
+          docker push ${{ secrets.NEOAGI_PRIVATE_DOCKER_REGISTRY }}/{ProjectNamespaceLower}:${{ env.TAG_NAME }}
+          docker push ${{ secrets.NEOAGI_PRIVATE_DOCKER_REGISTRY }}/{ProjectNamespaceLower}:${{ env.SHORT_HASH }}
+          docker push ${{ secrets.NEOAGI_PRIVATE_DOCKER_REGISTRY }}/{ProjectNamespaceLower}:latest
+        shell: bash
+
+      - name: Notify
+        uses: neoagi/actions-slack-notify@v2
+        if: always()
