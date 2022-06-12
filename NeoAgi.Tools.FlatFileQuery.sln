@@ -1,19 +1,30 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30114.105
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NeoAgi.Tools.FlatFileQuery", "src\NeoAgi.Tools.FlatFileQuery.csproj", "{2CF3788F-EC68-49EE-96FC-7A8FC0889D9A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NeoAgi.Tools.FlatFileQuery", "src\NeoAgi.Tools.FlatFileQuery.csproj", "{2CF3788F-EC68-49EE-96FC-7A8FC0889D9A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NeoAgi.Tools.FlatFileQuery.Test", "test\NeoAgi.Tools.FlatFileQuery.Test.csproj", "{C99C957C-B201-4A40-A88E-EE4F52E52909}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NeoAgi.Tools.FlatFileQuery.Test", "test\NeoAgi.Tools.FlatFileQuery.Test.csproj", "{C99C957C-B201-4A40-A88E-EE4F52E52909}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{C5332156-FDF8-48C9-BEC1-8D59258B46BA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{15CEEE9F-86C4-4E52-82F9-134DE7886DC1}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\publish-container.yml = .github\workflows\publish-container.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9EA6C9B3-BB94-4247-B9F7-D13C2FD97B37}"
+	ProjectSection(SolutionItems) = preProject
+		CONTRIBURING.md = CONTRIBURING.md
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{2CF3788F-EC68-49EE-96FC-7A8FC0889D9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -24,5 +35,14 @@ Global
 		{C99C957C-B201-4A40-A88E-EE4F52E52909}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C99C957C-B201-4A40-A88E-EE4F52E52909}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C99C957C-B201-4A40-A88E-EE4F52E52909}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{15CEEE9F-86C4-4E52-82F9-134DE7886DC1} = {C5332156-FDF8-48C9-BEC1-8D59258B46BA}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {219D24D3-920F-46E7-9ED1-13EBEE6E8538}
 	EndGlobalSection
 EndGlobal
