@@ -1,12 +1,12 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
 using NeoAgi.CommandLine.Exceptions;
 using NLog.Extensions.Logging;
-using NLog;
 
-namespace NeoAgi.Tools.FlatFileQuery {
+namespace NeoAgi.Tools.FlatFileQuery
+{
     public class Program
     {
         public static void Main(string[] args)
@@ -14,6 +14,10 @@ namespace NeoAgi.Tools.FlatFileQuery {
             try
             {
                 CreateHostBuilder(args).Build().Run();
+            }
+            catch (StopApplicationException stopex)
+            {
+                Console.WriteLine("Error: " + stopex.Message);
             }
             catch (CommandLineOptionParseException)
             {
@@ -35,7 +39,7 @@ namespace NeoAgi.Tools.FlatFileQuery {
                     logBuilder.ClearProviders();
                     logBuilder.SetMinimumLevel(Enum<Microsoft.Extensions.Logging.LogLevel>.ParseOrDefault(
                         hostContext.Configuration.GetValue<string>("ServiceConfig:LogLevel"), Microsoft.Extensions.Logging.LogLevel.Debug));
-                        
+
                     ServiceConfig serviceConfig = hostContext.Configuration.GetSection("ServiceConfig").Get<ServiceConfig>();
 
                     logBuilder.AddNLog(serviceConfig.LoggingConfigurationFile);

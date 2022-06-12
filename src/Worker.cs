@@ -90,10 +90,15 @@ namespace NeoAgi.Tools.FlatFileQuery
                 string[] parts = location.Split("AS ");
                 tableName = parts[1];
 
+                // This replaces "/some/path/file.csv AS someTable" with "someTable"
                 modifiedQuery = Config.Query.Replace(location, tableName);
 
                 location = parts[0];
-
+            }
+            else
+            {
+                // Note, the table name could be inferred from the file name, but would that be obvious?
+                throw new StopApplicationException("No AS clause found in FROM Predicate.  An AS Clause must be added to defrefence the table name.");
             }
 
             return new Tuple<string, string, string>(location.Trim(), tableName.Trim(), modifiedQuery);
