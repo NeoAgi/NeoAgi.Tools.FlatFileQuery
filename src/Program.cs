@@ -36,12 +36,11 @@ namespace NeoAgi.Tools.FlatFileQuery
                 })
                 .ConfigureLogging((hostContext, logBuilder) =>
                 {
-                    logBuilder.ClearProviders();
-                    logBuilder.SetMinimumLevel(Enum<Microsoft.Extensions.Logging.LogLevel>.ParseOrDefault(
-                        hostContext.Configuration.GetValue<string>("ServiceConfig:LogLevel"), Microsoft.Extensions.Logging.LogLevel.Debug));
-
                     ServiceConfig serviceConfig = hostContext.Configuration.GetSection("ServiceConfig").Get<ServiceConfig>();
 
+                    logBuilder.ClearProviders();
+                    // Note: This has no effect at this time
+                    // logBuilder.SetMinimumLevel(Enum.Parse<LogLevel>(serviceConfig.LogLevel));
                     logBuilder.AddNLog(serviceConfig.LoggingConfigurationFile);
                 })
                 .ConfigureServices((hostContext, services) =>
