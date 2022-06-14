@@ -8,7 +8,7 @@ using Microsoft.Data.Sqlite;
 
 namespace NeoAgi.Tools.FlatFileQuery.Sqlite
 {
-    internal class SqliteDataAccessObject : IDisposable
+    public class SqliteDataAccessObject : IDisposable
     {
         protected string ConnectionString { get; set; } = "Data Source=Sharable;Mode=Memory;Cache=Shared";
 
@@ -22,14 +22,14 @@ namespace NeoAgi.Tools.FlatFileQuery.Sqlite
             Connection = new SqliteConnection();
         }
 
-        public async Task<int> NonQueryAsync(string query, Dictionary<string, string> parameters)
+        public async Task<int> NonQueryAsync(string query, Dictionary<string, string>? parameters = null)
         {
             var command = CreateCommand(query, parameters);
 
             return await command.ExecuteNonQueryAsync();
         }
 
-        public async IAsyncEnumerable<Dictionary<string, string>> QueryAsync(string query, Dictionary<string, string> parameters)
+        public async IAsyncEnumerable<Dictionary<string, string>> QueryAsync(string query, Dictionary<string, string>? parameters = null)
         {
             var command = CreateCommand(query, parameters);
 
@@ -38,35 +38,41 @@ namespace NeoAgi.Tools.FlatFileQuery.Sqlite
                 while (reader.Read())
                 {
                     Dictionary<string, string> record = new Dictionary<string, string>();
-                    record["Name"] = reader.GetString(0);
+                    for(int i = 0; i < reader.FieldCount; i++)
+                    {
+                        record[reader.GetName(i)] = reader.GetValue(i).ToString() ?? string.Empty;
+                    }
 
                     yield return record;
                 }
             }
         }
 
-        public SqliteCommand CreateCommand(string query, Dictionary<string, string> parameters)
+        protected SqliteCommand CreateCommand(string query, Dictionary<string, string>? parameters = null)
         {
             OpenConnection();
 
             var command = Connection.CreateCommand();
             command.CommandText = query;
             command.CommandType = CommandType.Text;
-            foreach (var parameter in parameters)
+            if (parameters != null)
             {
-                command.Parameters.AddWithValue("@" + parameter.Key, parameter.Value);
+                foreach (var parameter in parameters)
+                {
+                    command.Parameters.AddWithValue("@" + parameter.Key, parameter.Value);
+                }
             }
 
             return command;
         }
 
-        public void OpenConnection()
+        protected void OpenConnection()
         {
             if(Connection.State != ConnectionState.Open) 
                 Connection.Open();
         }
 
-        public void CloseConnection()
+        protected void CloseConnection()
         {
             if (Connection.State != System.Data.ConnectionState.Closed)
                 Connection.Close();
