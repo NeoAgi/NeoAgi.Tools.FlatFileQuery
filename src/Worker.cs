@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-using NeoAgi.Data.Sql.Sqlite;
+using NeoAgi.Tools.FlatFileQuery.Sqlite;
 
 namespace NeoAgi.Tools.FlatFileQuery
 {
@@ -13,20 +13,6 @@ namespace NeoAgi.Tools.FlatFileQuery
         private readonly ILogger Logger;
         private readonly IHostApplicationLifetime AppLifetime;
         private readonly ServiceConfig Config;
-
-        protected const string SQL_DSN = "sqlite://localhost/?Data%20Source=Sharable&Mode=Memory&Cache=Shared";
-
-        private SqliteDataAccessObject? _DAO = null;
-        protected SqliteDataAccessObject DAO
-        {
-            get
-            {
-                if (_DAO == null)
-                    _DAO = SqliteDataAccessObject.Create(SQL_DSN);
-
-                return _DAO;
-            }
-        }
 
         protected string? InsertColumnNames { get; set; }
 
@@ -50,18 +36,22 @@ namespace NeoAgi.Tools.FlatFileQuery
             // We have a raw query, extract out the path of the data file
             Tuple<string, string, string> tableInfo = ParseDataFileFromQuery(Config.Query);
 
-            // If the file exists... load the file
+            // If the file exists...
             if (System.IO.File.Exists(tableInfo.Item1))
             {
-                await LoadFile(tableInfo.Item1, tableInfo.Item2);
+                using (SqliteDataAccessObject dao = new SqliteDataAccessObject())
+                {
+                    // Load the file into Sqlite
+                    await LoadFile(dao, tableInfo.Item1, tableInfo.Item2);
+
+                    // Perform our query
+                    await ExecuteQueryAsync(dao, tableInfo.Item3);
+                }
             }
             else
             {
                 throw new StopApplicationException($"File {tableInfo.Item1} cannot be found.");
             }
-
-            // Perform our query
-            await ExecuteQuery(tableInfo.Item3);
 
             AppLifetime.StopApplication();
 
@@ -72,16 +62,19 @@ namespace NeoAgi.Tools.FlatFileQuery
 
         public Tuple<string, string, string> ParseDataFileFromQuery(string query)
         {
+            if(query.Trim().EndsWith(";"))
+                query = query.Trim().Substring(0, query.Length - 1);
+
             string modifiedQuery = query;
             string? tableName = null;
 
-            int fromIdx = Config.Query.IndexOf("FROM ");
-            int whereIdx = Config.Query.IndexOf("WHERE ");
+            int fromIdx = query.IndexOf("FROM ");
+            int whereIdx = query.IndexOf("WHERE ");
 
             if (whereIdx == -1)
-                whereIdx = Config.Query.Length;
+                whereIdx = query.Length;
 
-            string location = Config.Query.Substring(fromIdx, whereIdx - fromIdx).Substring(5);
+            string location = query.Substring(fromIdx, whereIdx - fromIdx).Substring(5);
 
             // At this point the location may look like "/some/path/file.csv AS someTable"
             int asIdx = Config.Query.IndexOf("AS ");
@@ -104,7 +97,7 @@ namespace NeoAgi.Tools.FlatFileQuery
             return new Tuple<string, string, string>(location.Trim(), tableName.Trim(), modifiedQuery);
         }
 
-        public async Task LoadFile(string dataFileLocation, string tableName)
+        public async Task LoadFile(SqliteDataAccessObject dao, string dataFileLocation, string tableName)
         {
             using (var reader = new StreamReader(dataFileLocation))
             using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
@@ -114,7 +107,7 @@ namespace NeoAgi.Tools.FlatFileQuery
 
                 string[] headers = csv.HeaderRecord;
 
-                CreateTableFromFieldNames(tableName, headers);
+                await CreateTableFromFieldNamesAsync(dao, tableName, headers);
 
                 Dictionary<string, string> row = new Dictionary<string, string>();
 
@@ -125,14 +118,12 @@ namespace NeoAgi.Tools.FlatFileQuery
                         row[columnName] = csv.GetField(columnName);
                     }
 
-                    InsertRow(tableName, row);
+                    await InsertRowAsync(dao, tableName, row);
                 }
             }
-
-            await Task.CompletedTask;
         }
 
-        public void CreateTableFromFieldNames(string tableName, string[] fields)
+        public async Task CreateTableFromFieldNamesAsync(SqliteDataAccessObject dao, string tableName, string[] fields)
         {
             List<string> columns = new List<string>(fields.Length);
             foreach (string columnName in fields)
@@ -141,38 +132,43 @@ namespace NeoAgi.Tools.FlatFileQuery
             }
 
             string query = $"CREATE TABLE {tableName}({string.Join(',', columns)});";
-            DAO.NonQuery(query);
+            await dao.NonQueryAsync(query);
         }
 
-        public bool InsertRow(string tableName, Dictionary<string, string> values)
+        public async Task<bool> InsertRowAsync(SqliteDataAccessObject dao, string tableName, Dictionary<string, string> values)
         {
             List<string> fieldNames = new List<string>(values.Count);
             List<string> paramNames = new List<string>(values.Count);
 
-            SqliteDataAccessObject dao = SqliteDataAccessObject.Create(SQL_DSN);
-
             foreach (KeyValuePair<string, string> kvp in values)
             {
-                dao.AddParam("@" + kvp.Key, kvp.Value);
                 fieldNames.Add(kvp.Key);
                 paramNames.Add("@" + kvp.Key);
             }
 
             string query = $"INSERT INTO {tableName} ({string.Join(',', fieldNames)}) VALUES({string.Join(',', paramNames)})";
-            int affected = dao.NonQuery(query);
+            int affected = await dao.NonQueryAsync(query, values);
 
             return (affected > 0);
         }
 
-        public async Task ExecuteQuery(string query)
+        public async Task ExecuteQueryAsync(SqliteDataAccessObject dao, string query)
         {
             Logger.LogInformation("Executing Query: {query}", query);
-            foreach (Simple record in DAO.Query<Simple>(query))
-            {
-                Console.WriteLine(record.Id + ": " + record.Name);
-            }
+            var results = dao.QueryAsync(query);
 
-            await Task.CompletedTask;
+            int recordIdx = 0;
+            await foreach(var result in results)
+            {
+                Console.Write($"Record {recordIdx}| ");
+                foreach(var kvp in result)
+                {
+                    Console.Write(kvp.Key + ": " + kvp.Value + " ");
+                }
+
+                Console.WriteLine();
+                recordIdx++;
+            }
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -185,11 +181,5 @@ namespace NeoAgi.Tools.FlatFileQuery
         private void OnStarted() { }
         private void OnStopping() { }
         private void OnStopped() { }
-    }
-
-    public class Simple
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
     }
 }
