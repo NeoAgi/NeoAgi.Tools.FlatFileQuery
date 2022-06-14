@@ -73,7 +73,7 @@ namespace NeoAgi.Tools.FlatFileQuery
         public Tuple<string, string, string> ParseDataFileFromQuery(string query)
         {
             string modifiedQuery = query;
-            string tableName = "table";
+            string? tableName = null;
 
             int fromIdx = Config.Query.IndexOf("FROM ");
             int whereIdx = Config.Query.IndexOf("WHERE ");
@@ -85,7 +85,7 @@ namespace NeoAgi.Tools.FlatFileQuery
 
             // At this point the location may look like "/some/path/file.csv AS someTable"
             int asIdx = Config.Query.IndexOf("AS ");
-            if (asIdx > -1)
+            if (asIdx > -1 && asIdx > fromIdx && asIdx < whereIdx)
             {
                 string[] parts = location.Split("AS ");
                 tableName = parts[1];
