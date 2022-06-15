@@ -59,11 +59,16 @@ namespace NeoAgi.Tools.FlatFileQuery.Sqlite
             {
                 foreach (var parameter in parameters)
                 {
-                    command.Parameters.AddWithValue("@" + parameter.Key, parameter.Value);
+                    command.Parameters.AddWithValue("@" + SafeParamKey(parameter.Key), parameter.Value);
                 }
             }
 
             return command;
+        }
+
+        public string SafeParamKey(string val)
+        {
+            return val.Replace(' ', '_').Replace('/', '_').Replace('&', '_').Replace('-', '_');
         }
 
         protected void OpenConnection()

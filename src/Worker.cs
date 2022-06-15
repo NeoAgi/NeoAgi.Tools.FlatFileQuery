@@ -77,9 +77,16 @@ namespace NeoAgi.Tools.FlatFileQuery
             string location = query.Substring(fromIdx, whereIdx - fromIdx).Substring(5);
 
             // At this point the location may look like "/some/path/file.csv AS someTable"
-            int asIdx = Config.Query.IndexOf("AS ");
+            int asIdx = query.IndexOf("AS ");
             if (asIdx > -1 && asIdx > fromIdx && asIdx < whereIdx)
             {
+                int asLocationIdx = location.IndexOf("AS ");
+                int spaceIdx = location.IndexOf(' ', asLocationIdx + 3);
+                if (spaceIdx > -1)
+                {
+                    location = location.Substring(0, spaceIdx);
+                }
+
                 string[] parts = location.Split("AS ");
                 tableName = parts[1];
 
@@ -128,7 +135,7 @@ namespace NeoAgi.Tools.FlatFileQuery
             List<string> columns = new List<string>(fields.Length);
             foreach (string columnName in fields)
             {
-                columns.Add($"{columnName} TEXT NOT NULL");
+                columns.Add($"'{columnName}' TEXT NOT NULL");
             }
 
             string query = $"CREATE TABLE {tableName}({string.Join(',', columns)});";
@@ -142,8 +149,8 @@ namespace NeoAgi.Tools.FlatFileQuery
 
             foreach (KeyValuePair<string, string> kvp in values)
             {
-                fieldNames.Add(kvp.Key);
-                paramNames.Add("@" + kvp.Key);
+                fieldNames.Add($"'{kvp.Key}'");
+                paramNames.Add("@" + dao.SafeParamKey(kvp.Key));
             }
 
             string query = $"INSERT INTO {tableName} ({string.Join(',', fieldNames)}) VALUES({string.Join(',', paramNames)})";
