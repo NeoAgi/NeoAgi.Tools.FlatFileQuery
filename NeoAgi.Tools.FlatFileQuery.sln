@@ -10,9 +10,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{C5332156-FDF8-48C9-BEC1-8D59258B46BA}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{15CEEE9F-86C4-4E52-82F9-134DE7886DC1}"
-	ProjectSection(SolutionItems) = preProject
-		.github\workflows\publish-container.yml = .github\workflows\publish-container.yml
-	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9EA6C9B3-BB94-4247-B9F7-D13C2FD97B37}"
 	ProjectSection(SolutionItems) = preProject

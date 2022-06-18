@@ -3,19 +3,22 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <Version>1.0.0</Version>
-		<PackageProjectUrl>https://github.com/NeoAgi/NeoAgi.Tools.FlatFileQuery</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/NeoAgi/NeoAgi.Tools.FlatFileQuery</RepositoryUrl>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<Copyright>2021 NeoAgi, LLC</Copyright>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<Company>NeoAgi, LLC</Company>
-		<NeutralLanguage>en-US</NeutralLanguage>
-		<Authors>NeoAgi</Authors>
-		<Description>General Purpose Contact Service</Description>
-		<RepositoryType>git</RepositoryType>
-		<AssemblyName>NeoAgi.Tools.FlatFileQuery</AssemblyName>
-		<TargetFramework>net6.0</TargetFramework>
+    <PackageProjectUrl>https://github.com/NeoAgi/NeoAgi.Tools.FlatFileQuery</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NeoAgi/NeoAgi.Tools.FlatFileQuery</RepositoryUrl>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Copyright>2021 NeoAgi, LLC</Copyright>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Company>NeoAgi, LLC</Company>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <Authors>NeoAgi</Authors>
+    <Description>General Purpose Contact Service</Description>
+    <RepositoryType>git</RepositoryType>
+    <AssemblyName>NeoAgi.Tools.FlatFileQuery</AssemblyName>
+    <TargetFramework>net6.0</TargetFramework>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
