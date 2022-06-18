@@ -1,10 +1,9 @@
-﻿using System.Globalization;
+﻿using System.Collections.Concurrent;
+using System.Globalization;
 using CsvHelper;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Collections.Concurrent;
-
 using NeoAgi.Tools.FlatFileQuery.Sqlite;
 
 namespace NeoAgi.Tools.FlatFileQuery
@@ -40,6 +39,7 @@ namespace NeoAgi.Tools.FlatFileQuery
             // If the file exists...
             if (System.IO.File.Exists(tableInfo.Item1))
             {
+                Dictionary<string, int> maximumLengths = new Dictionary<string, int>();
                 ConcurrentQueue<Dictionary<string, string>> cq = new ConcurrentQueue<Dictionary<string, string>>();
 
                 using (SqliteDataAccessObject dao = new SqliteDataAccessObject())
@@ -48,10 +48,10 @@ namespace NeoAgi.Tools.FlatFileQuery
                     await LoadFile(dao, tableInfo.Item1, tableInfo.Item2);
 
                     // Perform our query
-                    await ExecuteQueryAsync(dao, tableInfo.Item3, cq);
+                    maximumLengths = await ExecuteQueryAsync(dao, tableInfo.Item3, cq);
                 }
 
-                await RenderOutputAsync(cq);
+                await RenderOutputAsync(cq, maximumLengths);
             }
             else
             {
@@ -67,7 +67,7 @@ namespace NeoAgi.Tools.FlatFileQuery
 
         public Tuple<string, string, string> ParseDataFileFromQuery(string query)
         {
-            if(query.Trim().EndsWith(";"))
+            if (query.Trim().EndsWith(";"))
                 query = query.Trim().Substring(0, query.Length - 1);
 
             string modifiedQuery = query;
@@ -164,28 +164,99 @@ namespace NeoAgi.Tools.FlatFileQuery
             return (affected > 0);
         }
 
-        public async Task ExecuteQueryAsync(SqliteDataAccessObject dao, string query, ConcurrentQueue<Dictionary<string, string>> queue)
+        public async Task<Dictionary<string, int>> ExecuteQueryAsync(SqliteDataAccessObject dao, string query, ConcurrentQueue<Dictionary<string, string>> queue)
         {
             Logger.LogInformation("Executing Query: {query}", query);
             var results = dao.QueryAsync(query);
 
+            Dictionary<string, int> fieldMaximumLengths = new Dictionary<string, int>();
+
             int recordIdx = 0;
-            await foreach(var result in results)
+            await foreach (var result in results)
             {
                 Logger.LogDebug("Record {recordIndex}", recordIdx);
-                Console.Write($"Record {recordIdx}| ");
-                foreach(var kvp in result)
+                queue.Enqueue(result);
+
+                foreach (var kvp in result)
                 {
-                    queue.Enqueue(result);
+                    if (!fieldMaximumLengths.ContainsKey(kvp.Key))
+                        fieldMaximumLengths.Add(kvp.Key, 0);
+
+                    if (kvp.Value.Length > fieldMaximumLengths[kvp.Key])
+                        fieldMaximumLengths[kvp.Key] = kvp.Value.Length;
                 }
 
                 recordIdx++;
             }
+
+            // Enumerate the header record
+            foreach (var kvp in fieldMaximumLengths)
+            {
+                if (kvp.Key.Length > fieldMaximumLengths[kvp.Key])
+                    fieldMaximumLengths[kvp.Key] = kvp.Key.Length;
+            }
+
+            return fieldMaximumLengths;
         }
 
-        public async Task RenderOutputAsync(ConcurrentQueue<Dictionary<string, string>> queue)
+        public async Task RenderOutputAsync(ConcurrentQueue<Dictionary<string, string>> queue, Dictionary<string, int> maximumLengths)
         {
+            int recordCount = 0;
+            while (queue.TryDequeue(out Dictionary<string, string>? record))
+            {
+                // Print the header
+                if (recordCount == 0)
+                {
+                    foreach (var kvp in maximumLengths)
+                    {
+                        FillCell(string.Empty, '-', maximumLengths[kvp.Key]);
+                    }
+                    FinalizeRow();
+
+                    foreach (var kvp in maximumLengths)
+                    {
+                        FillCell(kvp.Key, '-', maximumLengths[kvp.Key]);
+                    }
+                    FinalizeRow();
+
+                    foreach (var kvp in maximumLengths)
+                    {
+                        FillCell(string.Empty, '-', maximumLengths[kvp.Key]);
+                    }
+                    FinalizeRow();
+                }
+
+                foreach (var kvp in maximumLengths)
+                {
+                    FillCell(record[kvp.Key], ' ', maximumLengths[kvp.Key]);
+                }
+                FinalizeRow();
+
+                recordCount++;
+            }
+
+            if (recordCount > 0)
+            {
+                foreach (var kvp in maximumLengths)
+                {
+                    FillCell(string.Empty, '-', maximumLengths[kvp.Key]);
+                }
+                FinalizeRow();
+            }
+
             await Task.CompletedTask;
+        }
+
+        public void FillCell(string val, char fillChar, int length)
+        {
+            string s = "| " + val.PadRight(length, fillChar) + " ";
+
+            Console.Write(s);
+        }
+
+        public void FinalizeRow()
+        {
+            Console.WriteLine("|");
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
