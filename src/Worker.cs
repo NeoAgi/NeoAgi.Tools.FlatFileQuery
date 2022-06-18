@@ -3,6 +3,7 @@ using CsvHelper;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
 
 using NeoAgi.Tools.FlatFileQuery.Sqlite;
 
@@ -39,14 +40,18 @@ namespace NeoAgi.Tools.FlatFileQuery
             // If the file exists...
             if (System.IO.File.Exists(tableInfo.Item1))
             {
+                ConcurrentQueue<Dictionary<string, string>> cq = new ConcurrentQueue<Dictionary<string, string>>();
+
                 using (SqliteDataAccessObject dao = new SqliteDataAccessObject())
                 {
                     // Load the file into Sqlite
                     await LoadFile(dao, tableInfo.Item1, tableInfo.Item2);
 
                     // Perform our query
-                    await ExecuteQueryAsync(dao, tableInfo.Item3);
+                    await ExecuteQueryAsync(dao, tableInfo.Item3, cq);
                 }
+
+                await RenderOutputAsync(cq);
             }
             else
             {
@@ -159,7 +164,7 @@ namespace NeoAgi.Tools.FlatFileQuery
             return (affected > 0);
         }
 
-        public async Task ExecuteQueryAsync(SqliteDataAccessObject dao, string query)
+        public async Task ExecuteQueryAsync(SqliteDataAccessObject dao, string query, ConcurrentQueue<Dictionary<string, string>> queue)
         {
             Logger.LogInformation("Executing Query: {query}", query);
             var results = dao.QueryAsync(query);
@@ -167,15 +172,20 @@ namespace NeoAgi.Tools.FlatFileQuery
             int recordIdx = 0;
             await foreach(var result in results)
             {
+                Logger.LogDebug("Record {recordIndex}", recordIdx);
                 Console.Write($"Record {recordIdx}| ");
                 foreach(var kvp in result)
                 {
-                    Console.Write(kvp.Key + ": " + kvp.Value + " ");
+                    queue.Enqueue(result);
                 }
 
-                Console.WriteLine();
                 recordIdx++;
             }
+        }
+
+        public async Task RenderOutputAsync(ConcurrentQueue<Dictionary<string, string>> queue)
+        {
+            await Task.CompletedTask;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
