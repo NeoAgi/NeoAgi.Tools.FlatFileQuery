@@ -42,10 +42,18 @@ namespace NeoAgi.Tools.FlatFileQuery
                 Dictionary<string, int> maximumLengths = new Dictionary<string, int>();
                 ConcurrentQueue<Dictionary<string, string>> cq = new ConcurrentQueue<Dictionary<string, string>>();
 
-                using (SqliteDataAccessObject dao = new SqliteDataAccessObject())
+                bool cacheDb = string.IsNullOrEmpty(Config.DoNotCacheDB);
+                string cacheDbFile = tableInfo.Item1 + ".db";
+
+                string dsn = (cacheDb)
+                    ? "Cache=Shared;Data Source=" + cacheDbFile
+                    : "Data Source=Sharable;Mode=Memory;Cache=Shared";
+
+                using (SqliteDataAccessObject dao = new SqliteDataAccessObject(dsn))
                 {
                     // Load the file into Sqlite
-                    await LoadFile(dao, tableInfo.Item1, tableInfo.Item2);
+                    if (!cacheDb || cacheDb && !File.Exists(cacheDbFile))
+                        await LoadFile(dao, tableInfo.Item1, tableInfo.Item2);
 
                     // Perform our query
                     maximumLengths = await ExecuteQueryAsync(dao, tableInfo.Item3, cq);
@@ -215,7 +223,7 @@ namespace NeoAgi.Tools.FlatFileQuery
 
                     foreach (var kvp in maximumLengths)
                     {
-                        FillCell(kvp.Key, '-', maximumLengths[kvp.Key]);
+                        FillCell(kvp.Key, ' ', maximumLengths[kvp.Key]);
                     }
                     FinalizeRow();
 

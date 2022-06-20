@@ -30,7 +30,7 @@ namespace NeoAgi.Tools.FlatFileQuery
                 .ConfigureAppConfiguration(configuration =>
                 {
                     configuration.Sources.Clear();
-                    configuration.AddJsonFile("appsettings.json", optional: false);
+                    configuration.AddJsonFile("appsettings.json", optional: true);
                     configuration.AddEnvironmentVariables(prefix: "APP_");
                     configuration.AddOpts<ServiceConfig>(args, "ServiceConfig", outputStream: Console.Out);
                 })

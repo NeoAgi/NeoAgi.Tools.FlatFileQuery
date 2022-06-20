@@ -19,7 +19,7 @@ namespace NeoAgi.Tools.FlatFileQuery.Sqlite
             if (connectionString != null)
                 ConnectionString = connectionString;
 
-            Connection = new SqliteConnection();
+            Connection = new SqliteConnection(ConnectionString);
         }
 
         public async Task<int> NonQueryAsync(string query, Dictionary<string, string>? parameters = null)
