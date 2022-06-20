@@ -15,5 +15,8 @@ namespace NeoAgi.Tools.FlatFileQuery
 
         [Option(FriendlyName = "Query to Perform", ShortName = "q", LongName = "query", Description = "Query to Perform against the specified data file", Required = true)]
         public string Query { get; set; } = string.Empty;
+
+        [Option(FriendlyName = "Do Not Cache", LongName = "no-cache-db", Description = "Do not persist file DB across queries.")]
+        public string DoNotCacheDB { get; set; } = string.Empty;
     }
 }

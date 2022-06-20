@@ -17,7 +17,6 @@
     <AssemblyName>NeoAgi.Tools.FlatFileQuery</AssemblyName>
     <TargetFramework>net6.0</TargetFramework>
     <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
     <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
