@@ -5,6 +5,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NeoAgi.Tools.FlatFileQuery.Sqlite;
+using System.Security.Cryptography;
+using NeoAgi.Tools.FlatFileQuery.Extensions;
 
 namespace NeoAgi.Tools.FlatFileQuery
 {
@@ -43,7 +45,8 @@ namespace NeoAgi.Tools.FlatFileQuery
                 ConcurrentQueue<Dictionary<string, string>> cq = new ConcurrentQueue<Dictionary<string, string>>();
 
                 bool cacheDb = string.IsNullOrEmpty(Config.DoNotCacheDB);
-                string cacheDbFile = tableInfo.Item1 + ".db";
+                string cacheDbFile = $"{tableInfo.Item1}.{GenerateHashOfFile(tableInfo.Item1).Substring(0, 8)}.db";
+                bool cacheDBFileExists = (cacheDb && File.Exists(cacheDbFile));
 
                 string dsn = (cacheDb)
                     ? "Cache=Shared;Data Source=" + cacheDbFile
@@ -52,12 +55,17 @@ namespace NeoAgi.Tools.FlatFileQuery
                 using (SqliteDataAccessObject dao = new SqliteDataAccessObject(dsn))
                 {
                     // Load the file into Sqlite
-                    if (!cacheDb || cacheDb && !File.Exists(cacheDbFile))
+                    if (!cacheDb || !cacheDBFileExists)
                         await LoadFile(dao, tableInfo.Item1, tableInfo.Item2);
 
                     // Perform our query
                     maximumLengths = await ExecuteQueryAsync(dao, tableInfo.Item3, cq);
                 }
+
+                // Once the query has been created, mark it has hidden
+                // NOTE: We could use an Alternate Data Stream, but for portability we'll use hidden as ADS would require probing the FS for support
+                if (!cacheDBFileExists)
+                    File.SetAttributes(cacheDbFile, FileAttributes.Hidden);
 
                 await RenderOutputAsync(cq, maximumLengths);
             }
@@ -265,6 +273,15 @@ namespace NeoAgi.Tools.FlatFileQuery
         public void FinalizeRow()
         {
             Console.WriteLine("|");
+        }
+
+        protected string GenerateHashOfFile(string fileLocation)
+        {
+            using (FileStream fs = File.OpenRead(fileLocation))
+            {
+                SHA256 sha = SHA256.Create();
+                return sha.ComputeHash(fs).ToHex();
+            }
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
