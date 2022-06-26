@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 
@@ -73,8 +74,17 @@ namespace NeoAgi.Tools.FlatFileQuery.Sqlite
 
         protected void OpenConnection()
         {
-            if(Connection.State != ConnectionState.Open) 
+            if (Connection.State != ConnectionState.Open)
+            {
                 Connection.Open();
+
+                // Enable REGEX SUpport
+                // Taken from: https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/user-defined-functions#operators
+                Connection.CreateFunction(
+                    "regexp",
+                    (string pattern, string input)
+                        => Regex.IsMatch(input, pattern));
+            }
         }
 
         protected void CloseConnection()
