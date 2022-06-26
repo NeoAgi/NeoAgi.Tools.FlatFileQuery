@@ -98,7 +98,7 @@ namespace NeoAgi.Tools.FlatFileQuery
             string location = query.Substring(fromIdx, whereIdx - fromIdx).Substring(5);
 
             // At this point the location may look like "/some/path/file.csv AS someTable"
-            int asIdx = query.IndexOf("AS ");
+            int asIdx = query.IndexOf("AS ", fromIdx);
             if (asIdx > -1 && asIdx > fromIdx && asIdx < whereIdx)
             {
                 int asLocationIdx = location.IndexOf("AS ");
@@ -175,41 +175,57 @@ namespace NeoAgi.Tools.FlatFileQuery
             }
 
             string query = $"INSERT INTO {tableName} ({string.Join(',', fieldNames)}) VALUES({string.Join(',', paramNames)})";
-            int affected = await dao.NonQueryAsync(query, values);
+            int affected = 0;
+            try
+            {
+                affected = await dao.NonQueryAsync(query, values);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"{ex.Message} occurred on query {query}");
+            }
 
             return (affected > 0);
         }
 
         public async Task<Dictionary<string, int>> ExecuteQueryAsync(SqliteDataAccessObject dao, string query, ConcurrentQueue<Dictionary<string, string>> queue)
         {
-            Logger.LogInformation("Executing Query: {query}", query);
-            var results = dao.QueryAsync(query);
-
             Dictionary<string, int> fieldMaximumLengths = new Dictionary<string, int>();
 
-            int recordIdx = 0;
-            await foreach (var result in results)
+            Logger.LogInformation("Executing Query: {query}", query);
+            try
             {
-                Logger.LogDebug("Record {recordIndex}", recordIdx);
-                queue.Enqueue(result);
+                var results = dao.QueryAsync(query);
 
-                foreach (var kvp in result)
+                int recordIdx = 0;
+                await foreach (var result in results)
                 {
-                    if (!fieldMaximumLengths.ContainsKey(kvp.Key))
-                        fieldMaximumLengths.Add(kvp.Key, 0);
+                    Logger.LogDebug("Record {recordIndex}", recordIdx);
+                    queue.Enqueue(result);
 
-                    if (kvp.Value.Length > fieldMaximumLengths[kvp.Key])
-                        fieldMaximumLengths[kvp.Key] = kvp.Value.Length;
+                    foreach (var kvp in result)
+                    {
+                        if (!fieldMaximumLengths.ContainsKey(kvp.Key))
+                            fieldMaximumLengths.Add(kvp.Key, 0);
+
+                        if (kvp.Value.Length > fieldMaximumLengths[kvp.Key])
+                            fieldMaximumLengths[kvp.Key] = kvp.Value.Length;
+                    }
+
+                    recordIdx++;
                 }
 
-                recordIdx++;
+                // Enumerate the header record
+                foreach (var kvp in fieldMaximumLengths)
+                {
+                    if (kvp.Key.Length > fieldMaximumLengths[kvp.Key])
+                        fieldMaximumLengths[kvp.Key] = kvp.Key.Length;
+                }
             }
-
-            // Enumerate the header record
-            foreach (var kvp in fieldMaximumLengths)
+            catch (Exception ex)
             {
-                if (kvp.Key.Length > fieldMaximumLengths[kvp.Key])
-                    fieldMaximumLengths[kvp.Key] = kvp.Key.Length;
+                Logger.LogError(ex, ex.Message);
+                throw;
             }
 
             return fieldMaximumLengths;
